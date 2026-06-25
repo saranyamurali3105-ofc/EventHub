@@ -1,38 +1,34 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'Node22'
+    }
+
     stages {
 
-        stage('Clone') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/saranyamurali3105-ofc/EventHub.git'
+                git branch: 'main',
+                    url: 'https://github.com/saranyamurali3105-ofc/EventHub.git'
             }
         }
 
-        stage('Install Frontend') {
+        stage('Install Dependencies') {
             steps {
                 sh 'npm install'
             }
         }
 
-        stage('Build Frontend') {
+        stage('Build') {
             steps {
                 sh 'npm run build'
             }
         }
 
-        stage('Deploy Frontend') {
+        stage('Success') {
             steps {
-                sh '''
-                sudo rm -rf /var/www/html/*
-                sudo cp -r dist/* /var/www/html/
-                '''
-            }
-        }
-
-        stage('Restart Nginx') {
-            steps {
-                sh 'sudo systemctl restart nginx'
+                echo 'Build completed successfully!'
             }
         }
     }
