@@ -9,7 +9,7 @@ const router = express.Router();
 // Rate limiting for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  max: 100, // limit each IP to 5 requests per windowMs
   message: 'Too many authentication attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -25,7 +25,6 @@ const registerValidation = [
     .withMessage('Username can only contain letters, numbers, and underscores'),
   body('email')
     .isEmail()
-    .normalizeEmail()
     .withMessage('Please provide a valid email'),
   body('password')
     .isLength({ min: 6 })
@@ -35,7 +34,6 @@ const registerValidation = [
 const loginValidation = [
   body('email')
     .isEmail()
-    .normalizeEmail()
     .withMessage('Please provide a valid email'),
   body('password')
     .notEmpty()
@@ -108,37 +106,44 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         details: errors.array()
       });
     }
+const { email, password } = req.body;
 
-    const { email, password } = req.body;
+console.log("=== LOGIN ===");
+console.log("Email:", email);
 
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
+const user = await User.findOne({ email });
 
-    // Check if account is active
-    if (!user.isActive) {
-      return res.status(401).json({ error: 'Account is deactivated' });
-    }
+console.log("User exists:", !!user);
 
-    // Verify password
-    const isValidPassword = await user.comparePassword(password);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
+if (!user) {
+    return res.status(401).json({ error: "Invalid email or password" });
+}
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+console.log("DB email:", user.email);
+console.log("DB active:", user.isActive);
 
-    // Generate token
-    const token = generateToken(user._id);
+if (!user.isActive) {
+    return res.status(401).json({ error: "Account is deactivated" });
+}
 
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
+const isValidPassword = await user.comparePassword(password);
+console.log("Password valid:", isValidPassword);
+
+if (!isValidPassword) {
+    return res.status(401).json({ error: "Invalid email or password" });
+}
+
+// Update last login
+user.lastLogin = new Date();
+await user.save();
+
+// Generate token
+const token = generateToken(user._id);
+
+res.json({
+    message: "Login successful",
+    token,
+    user: {
         id: user._id,
         username: user.username,
         email: user.email,
@@ -146,8 +151,8 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
         profile: user.profile,
         stats: user.stats,
         preferences: user.preferences
-      }
-    });
+    }
+});
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Failed to login' });

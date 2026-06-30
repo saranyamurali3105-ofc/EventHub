@@ -230,6 +230,8 @@ export default function App() {
       });
       return;
     }
+     
+    setIsOfflineMode(false);
 
     try {
       const token = getAuthToken();
@@ -264,7 +266,7 @@ export default function App() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
       
-      const response = await fetch(`${(typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || 'http://localhost:3000/api'}/health`, {
+      const response = await fetch(`${(typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || 'http://43.205.209.207:3000/api'}/health`, {
         method: 'GET',
         signal: controller.signal,
       });
@@ -278,11 +280,6 @@ export default function App() {
   };
 
   const loadDashboardData = async () => {
-    if (isOfflineMode) {
-      setEvents(mockEvents);
-      return;
-    }
-
     try {
       // Load all necessary data for dashboard
       const [eventsRes, notificationsRes] = await Promise.all([
@@ -296,16 +293,20 @@ export default function App() {
       if (notificationsRes.success) {
         setUnreadNotifications(notificationsRes.count || 0);
       }
-    } catch (error) {
-      console.error('Failed to load dashboard data, switching to offline mode:', error);
-      // Fallback to mock data
-      setEvents(mockEvents);
-      setIsOfflineMode(true);
-      addNotificationLocal({ 
-        message: 'Switched to offline mode - data loading failed', 
-        type: 'info' 
-      });
-    }
+} catch (error: any) {
+  console.error("========== DASHBOARD ERROR ==========");
+  console.error(error);
+  console.error("Message:", error?.message);
+  console.error("Stack:", error?.stack);
+
+  setEvents(mockEvents);
+  setIsOfflineMode(true);
+
+  addNotificationLocal({
+    message: 'Switched to offline mode - data loading failed',
+    type: 'info'
+  });
+}
   };
 
   // Authentication Functions
@@ -337,6 +338,9 @@ export default function App() {
       if (response.success && response.user) {
         setCurrentUser(response.user);
         setCurrentPage('dashboard');
+
+        setIsOfflineMode(false);      
+
         addNotificationLocal({ message: 'Successfully logged in!', type: 'success' });
         await loadDashboardData();
         return true;

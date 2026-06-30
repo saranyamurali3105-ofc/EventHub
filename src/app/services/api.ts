@@ -1,5 +1,5 @@
 // API Configuration and Services for EventsHub
-const API_BASE_URL = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || 'http://localhost:3000/api';
+const API_BASE_URL = 'http://43.205.209.207:3000/api';
 
 // Store auth token
 let authToken: string | null = localStorage.getItem('authToken');
@@ -129,7 +129,10 @@ export const eventsAPI = {
     const queryString = new URLSearchParams(params).toString();
     const response = await apiCall(`/events${queryString ? `?${queryString}` : ''}`);
     if (response.success) {
-      response.events = response.events || response.data || [];
+response.events = (response.events || response.data || []).map((event: any) => ({
+    ...event,
+    id: event._id
+}));
     }
     return response;
   },
@@ -137,7 +140,10 @@ export const eventsAPI = {
   getById: async (id: string) => {
     const response = await apiCall(`/events/${id}`);
     if (response.success) {
-      response.event = response.event || response.data;
+response.event = {
+    ...(response.event || response.data),
+    id: (response.event || response.data)._id
+};
     }
     return response;
   },
@@ -148,7 +154,10 @@ export const eventsAPI = {
       body: JSON.stringify(eventData),
     });
     if (response.success) {
-      response.event = response.event || response.data;
+response.events = (response.events || response.data || []).map((event: any) => ({
+  ...event,
+  id: event._id
+}));
     }
     return response;
   },
